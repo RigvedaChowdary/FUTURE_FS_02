@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import API from "./api";
 import {
   LayoutDashboard,
   Users,
@@ -10,7 +11,6 @@ import {
   Trash2,
   Edit,
   Eye,
-  TrendingUp,
   UserPlus,
   PhoneCall,
   CheckCircle,
@@ -28,35 +28,12 @@ import {
 } from "recharts";
 import "./App.css";
 
-const initialLeads = [
-  {
-    id: 1,
-    name: "Rahul Sharma",
-    email: "rahul@example.com",
-    phone: "9876543210",
-    source: "Website Form",
-    status: "New",
-    notes: "Interested in website development.",
-    date: "2026-05-30",
-  },
-  {
-    id: 2,
-    name: "Priya Mehta",
-    email: "priya@example.com",
-    phone: "9123456780",
-    source: "LinkedIn",
-    status: "Contacted",
-    notes: "Follow up next week.",
-    date: "2026-05-29",
-  },
-];
-
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [authData, setAuthData] = useState({ email: "", password: "" });
 
-  const [leads, setLeads] = useState(initialLeads);
+  const [leads, setLeads] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
@@ -70,6 +47,19 @@ function App() {
     status: "New",
     notes: "",
   });
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const fetchLeads = async () => {
+    try {
+      const res = await API.get("/leads");
+      setLeads(res.data);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+    }
+  };
 
   const handleAuth = () => {
     const users = JSON.parse(localStorage.getItem("crmUsers")) || [];
@@ -139,7 +129,7 @@ function App() {
     { month: "Feb", leads: 12 },
     { month: "Mar", leads: 18 },
     { month: "Apr", leads: 14 },
-    { month: "May", leads: leads.length + 10 },
+    { month: "May", leads: leads.length },
   ];
 
   const openAddModal = () => {
@@ -157,41 +147,53 @@ function App() {
 
   const openEditModal = (lead) => {
     setEditingLead(lead);
-    setFormData(lead);
+    setFormData({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      source: lead.source,
+      status: lead.status,
+      notes: lead.notes,
+    });
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (editingLead) {
-      setLeads(
-        leads.map((lead) =>
-          lead.id === editingLead.id
-            ? { ...formData, id: editingLead.id, date: editingLead.date }
-            : lead
-        )
-      );
-    } else {
-      const newLead = {
-        ...formData,
-        id: Date.now(),
-        date: new Date().toISOString().split("T")[0],
-      };
-      setLeads([newLead, ...leads]);
+    try {
+      if (editingLead) {
+        await API.put(`/leads/${editingLead._id}`, formData);
+      } else {
+        await API.post("/leads", formData);
+      }
+
+      await fetchLeads();
+      setShowModal(false);
+    } catch (error) {
+      console.error("Error saving lead:", error);
+      alert("Something went wrong while saving the lead.");
     }
-
-    setShowModal(false);
   };
 
-  const deleteLead = (id) => {
-    setLeads(leads.filter((lead) => lead.id !== id));
+  const deleteLead = async (id) => {
+    try {
+      await API.delete(`/leads/${id}`);
+      await fetchLeads();
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      alert("Something went wrong while deleting the lead.");
+    }
   };
 
-  const updateStatus = (id, status) => {
-    setLeads(
-      leads.map((lead) => (lead.id === id ? { ...lead, status } : lead))
-    );
+  const updateStatus = async (id, status) => {
+    try {
+      await API.put(`/leads/${id}`, { status });
+      await fetchLeads();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("Something went wrong while updating status.");
+    }
   };
 
   if (!isLoggedIn) {
@@ -322,7 +324,7 @@ function App() {
             <Users size={24} />
             <p>Total Leads</p>
             <h2>{stats.total}</h2>
-            <span>+12% this month</span>
+            <span>Stored in MongoDB</span>
           </div>
 
           <div className="stat-card blue">
@@ -421,7 +423,7 @@ function App() {
 
             <tbody>
               {filteredLeads.map((lead) => (
-                <tr key={lead.id}>
+                <tr key={lead._id}>
                   <td>
                     <div className="lead-user">
                       <div className="avatar">{lead.name.charAt(0)}</div>
@@ -435,7 +437,7 @@ function App() {
                     <select
                       className={`status ${lead.status.toLowerCase()}`}
                       value={lead.status}
-                      onChange={(e) => updateStatus(lead.id, e.target.value)}
+                      onChange={(e) => updateStatus(lead._id, e.target.value)}
                     >
                       <option>New</option>
                       <option>Contacted</option>
@@ -443,15 +445,15 @@ function App() {
                       <option>Converted</option>
                     </select>
                   </td>
-                  <td>{lead.date}</td>
+                  <td>{lead.createdAt ? lead.createdAt.split("T")[0] : "N/A"}</td>
                   <td className="actions">
-                    <button title={lead.notes}>
+                    <button title={lead.notes || "No notes"}>
                       <Eye size={16} />
                     </button>
                     <button onClick={() => openEditModal(lead)}>
                       <Edit size={16} />
                     </button>
-                    <button onClick={() => deleteLead(lead.id)}>
+                    <button onClick={() => deleteLead(lead._id)}>
                       <Trash2 size={16} />
                     </button>
                   </td>
