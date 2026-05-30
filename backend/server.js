@@ -6,29 +6,36 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const app = express();
-// Middleware
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use("/api/leads", require("./routes/leadRoutes"));
-app.use("/api/auth", require("./routes/authRoutes"));
-
-// Test Route
 app.get("/", (req, res) => {
   res.send("CRM Backend Running...");
 });
 
-// MongoDB Connection
+app.use("/api/leads", require("./routes/leadRoutes"));
+app.use("/api/auth", require("./routes/authRoutes"));
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB Connected");
 
     app.listen(process.env.PORT || 5000, () => {
-      console.log(
-        `🚀 Server running on port ${process.env.PORT || 5000}`
-      );
+      console.log(`🚀 Server running on port ${process.env.PORT || 5000}`);
     });
   })
   .catch((err) => {
