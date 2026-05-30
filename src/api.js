@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:5001/api",
+  baseURL: "https://future-fs-02-ij3q.onrender.com"
 });
 
 export default API;
