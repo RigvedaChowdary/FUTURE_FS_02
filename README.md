@@ -4,6 +4,8 @@
 
 A modern and responsive Customer Relationship Management (CRM) application built using React.js. This project helps businesses efficiently manage client leads, track lead status, maintain follow-up notes, and organize customer interactions through a clean and intuitive dashboard.
 
+Live Server : https://future-fs-02-kappa-beige.vercel.app/
+
 ## 📌 About the Project
 
 The Client Lead Management System is designed to simplify the process of handling incoming leads from website contact forms and other business channels.
